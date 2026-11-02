@@ -1,276 +1,76 @@
-# 🤖 NodeHexa - 六足机器人（支持四足构型）
+# AlphaNoah RDK Hexapod
 
-[English README](README_EN.md)
+**基于地瓜 RDK X5 与 ESP32 的六足机器人集成项目。**
 
-<div align="center">
+[English](README_EN.md) · [RDK 接入与协议](docs/RDK_X5_INTEGRATION.md) · [来源与许可](THIRD_PARTY_NOTICES.md)
 
-![NodeHexa Logo](resource/frontal.jpg)
+本项目在 [ViolinLee/NodeHexa](https://github.com/ViolinLee/NodeHexa) 2.1.0 固件包的基础上，增加 RDK X5 到 ESP32 的 USB 串口控制桥。**RDK X5 负责上位计算与控制，ESP32 执行运动控制，PCA9685 驱动舵机。**
 
-**一个基于 ESP32 的六足机器人项目，同时额外支持四足构型固件；支持 Web 控制、校准、表演动作与动作序列**
+实机状态：维护者于 **2026-11-02 确认 RDK X5 已接入六足机器人并能联动**。这是维护者对既有工作的确认；本次仓库整理未重新连接实机、烧录或录制运动结果。逐命令验证、实机照片和演示视频仍待归档。
 
-[![Platform](https://img.shields.io/badge/Platform-ESP32-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
-[![Framework](https://img.shields.io/badge/Framework-Arduino-green.svg)](https://www.arduino.cc/)
-[![License](https://img.shields.io/badge/License-GPL--3.0-red.svg)](LICENSE)
-[![Language](https://img.shields.io/badge/Language-C%2B%2B-orange.svg)](https://isocpp.org/)
+## 系统架构
 
-</div>
-
-## 📖 项目简介
-
-NodeHexa 是一个开源的六足机器人项目，基于 ESP32 微控制器开发。项目集成了运动学算法、Web 界面控制、实时校准与动作序列（运动规划）能力，面向机器人爱好者与研究用途。
-
-## 🧩 支持的构型
-
-当前代码仓库同时提供 **四足构型固件** 支持，便于共用一套 Web UI、校准与运动控制框架。
-
-| 构型 | 定位 | 支持范围 | 文档/图片现状 |
-| --- | --- | --- | --- |
-| **六足（Hexapod / NodeHexa）** | 主线 | 结构/硬件/固件/界面/教程 | 本 README 的示意图主要为六足；软硬件设计完全开源 |
-| **四足（Quadruped / NodeQuadMini）** | 额外支持 | 结构/原理图/固件/界面 | 本 README 已包含四足展示图；硬件侧提供原理图参考（PCB 未开源）；待更新教程 |
-
-> 结构件与紧固件差异：见 `mechanism/README.md`（已按六足/四足分别列出）。
-
-## ✨ 核心特性
-
-### 🧩 双构型支持（六足为主，四足为额外支持）
-- **统一抽象接口** - 六足/四足共用控制与 Web 框架
-- **构型差异隔离** - 六足与四足分别实现，互不影响主线功能演进
-
-### 🎮 多种控制方式
-- **Web界面控制** - 通过浏览器实时控制机器人运动
-- **串口通信** - 支持UART2串口指令控制（调试和外接上位机用）
-- **WebSocket通信** - 低延迟的实时数据传输
-- **语音拓展（可选）** - 支持接入“小智 AI 拓展板”，实现语音交互控制
-
-### 🚀 丰富的运动模式
-- **基础移动**: 前进、后退、左转、右转
-- **侧向移动**: 左移、右移
-- **姿态控制**: X/Y/Z轴旋转、扭转动作
-- **特殊动作**: 攀爬、快速前进
-- **表演模式**: 自由律动、节拍摇摆、登场秀
-- **动作按钮模式切换**: 支持“持续”与“单次（单周期）”两种触发方式，普通动作与表演动作都会随设置切换执行方式
-- **单腿演示模式（仅六足）**: 可单独选择一条腿进行前后/左右/抬升演示
-- **四足多步态切换**: 支持 Trot / Walk / Gallop / Creep 步态模式切换
-- **动作序列（运动规划）**: 将多段动作按“周期/步数/距离/角度”等约束编排成序列，一键执行（见 `/planner`）
-
-### 🔧 精确校准系统
-- **实时校准** - 通过Web界面进行舵机角度可视化校准
-- **参数保存** - 校准数据自动保存到Flash存储
-
-### 🔋 安全保护功能
-- **电量显示** - 主控制页与运动规划页实时显示电压和估算电量百分比
-- **电池监测** - 实时监控电池电压
-- **低电压保护** - 自动LED警告和系统保护
-
-## 🏗️ 技术架构
-
-### 硬件平台
-- **主控**: ESP32 (NodeMCU-32S)
-- **舵机驱动**: PCA9685 PWM驱动板
-- **通信**: WiFi + UART2串口
-- **存储**: SPIFFS文件系统
-- **语音拓展（可选）**: 小智 AI 拓展板
-
-### 软件架构
-```
-firmware/
-├── src/
-│   ├── main.cpp          # 主程序入口
-│   ├── robot.h            # 统一机器人抽象接口（六足/四足共用）
-│   ├── hexapod.h/cpp      # 六足实现
-│   ├── quad_robot.h/cpp   # 四足实现
-│   ├── leg.h/cpp          # 单腿控制（六足/四足各自实现/复用）
-│   ├── movement*.h/cpp    # 运动控制算法与配置表
-│   ├── motion_controller* # 动作序列/运动规划执行
-│   └── calibration.h/cpp  # 校准系统
-├── include/              # 头文件
-└── lib/                  # 第三方库
+```text
+地瓜 RDK X5：上位控制程序 / 后续感知与交互扩展
+                 |
+                 | USB 串口，115200 baud，换行分隔命令
+                 v
+ESP32 / NodeMCU-32S：RDK 命令桥、运动、校准与输出控制
+                 |
+                 | I2C；桥接代码检查 0x40 / 0x41
+                 v
+PCA9685 -> 六足机器人关节
 ```
 
-## 🎯 运动控制算法
+当前仓库包含 **ESP32 端固件及 RDK 接口协议**。RDK X5 实机上的上位控制程序尚未作为独立客户端归档在这里；`workspace/pathTool/` 不是该客户端。既有 `Serial2` UART JSON 接口继续保留，与 USB 文本桥分开。
 
-### 运动学计算
-- **正运动学**: 根据关节角度计算足端位置
-- **逆运动学**: 根据目标位置计算关节角度
-- **坐标变换**: 世界坐标系与局部坐标系转换
+## 当前能力
 
-## 🖼️ 项目展示
+| 能力 | 证据与边界 |
+|---|---|
+| RDK X5 与六足实机联动 | 维护者确认；本轮未独立复测 |
+| USB 串口桥 | `firmware/src/main.cpp` 的 `processRdkCommand()`；115200、换行结束 |
+| 舵机软件输出开关 | 启动标志关闭；支持显式使能/禁用 |
+| 动作与调试命令 | 前后行走、转向、待机、停止、单舵机测试与 I2C 检查；语义见协议 |
+| Web 控制、校准、动作编排 | 保留上游代码，不全部计为本项目新增工作 |
+| 视觉识别、自动巡检、自主导航、AI 自主运动 | 尚无本仓库中已验证的端到端闭环，不作为已完成能力 |
 
-### 六足（NodeHexa）结构与硬件设计
+`GET_ANGLES` 返回软件缓存，不是编码器反馈。当前 `SIT` 与 `STAND` 都选择 `MOVEMENT_STANDBY`，没有独立趴下动作。`STOP` 清除软件运动状态，不等于物理断电急停。详见 [协议与操作边界](docs/RDK_X5_INTEGRATION.md)。
 
-<table>
-  <tr>
-    <td align="center">
-      <img src="resource/45deg.jpg" alt="结构设计" width="300"/>
-      <br/>
-      <em>六足结构</em>
-    </td>
-    <td align="center">
-      <img src="resource/pcb-board.jpg" alt="PCB电路板" width="300"/>
-      <br/>
-      <em>PCB套件</em>
-    </td>
-    <td align="center">
-      <img src="resource/xiaozhi.jpg" alt="小智拓展板" width="300"/>
-      <br/>
-      <em>小智拓展</em>
-    </td>
-  </tr>
-</table>
+## 硬件与构建
 
-### 四足（NodeQuadMini）结构与硬件设计
+主线目标为 RDK X5、ESP32 / NodeMCU-32S、PCA9685 与六足结构。具体 RDK 系统版本、供电、舵机批次和实机接线照片尚未归档，不补造参数。结构/紧固件见 [mechanism/README.md](mechanism/README.md)，上游硬件资料见 [hardware/README.md](hardware/README.md)。四足参考资料不代表 RDK 桥已在四足上验证。
 
-<table>
-  <tr>
-    <td align="center">
-      <img src="resource/quad-45deg.png" alt="四足结构" width="300"/>
-      <br/>
-      <em>四足结构</em>
-    </td>
-    <td align="center">
-      <img src="resource/quad-frontal.png" alt="四足正面" width="300"/>
-      <br/>
-      <em>四足正面</em>
-    </td>
-    <td align="center">
-      <img src="resource/quad-pcb-board.png" alt="四足主板" width="300"/>
-      <br/>
-      <em>四足主板</em>
-    </td>
-  </tr>
-</table>
+实际构建入口为 `firmware/platformio.ini`。在已经配置好 PlatformIO 的环境中，从仓库根目录执行：
 
-> 说明：四足版本当前开源 **原理图** 供学习与维护参考；PCB 相关文件不开放。
->
-> 四足支持多种步态模式切换（Trot / Walk / Gallop / Creep）。
+```bash
+python -m platformio run -d firmware -e nodemcu-32s
+python -m platformio run -d firmware -e nodemcu-32s -t buildfs
+```
 
-## 🛒 购买链接
-- **套件购买**: [NodeHexa 六足机器人套件](https://item.taobao.com/item.htm?ft=t&id=810056770425)、[NodeQuadMini 四足机器人套件](https://item.taobao.com/item.htm?id=1022920495655)
-- **电路板购买**：[NodeHexa 六足机器人电路板](https://item.taobao.com/item.htm?id=990145258187)
-- **舵机购买（强烈推荐）**: [MG90s 舵机](https://item.taobao.com/item.htm?id=978672014892)
-- **语音拓展板购买**: [小智AI拓展板（支持四、六足）](https://item.taobao.com/item.htm?id=989885356650)
+本次仅整理文档与许可，**未安装构建依赖、未重新编译或烧录**。这些是既有构建入口，不是本次已通过的结果。配置保留历史 Windows 串口设置；实际设备由操作者确认，构建与上传分开。依赖版本尚未完整锁定，不保证任意新环境自动复现。
 
-> 强烈建议使用我们店铺上架的舵机：市面 MG90s 厂家众多，尺寸与质量差异较大；劣质舵机更容易过热/烧毁，后续成本更高。该链接为我们对多家产品测试对比后筛选的版本。
+## 目录
 
-<div align="center">
-  <img src="resource/step.jpg" alt="六足三维模型" width="400"/>
-  <br/>
-  <em>六足三维模型预览</em>
-</div>
+| 路径 | 内容 |
+|---|---|
+| `firmware/` | ESP32 PlatformIO 工程，实际编译入口 |
+| `arduino_reference/` | 便于阅读的桥接参考副本，不是独立完整 Arduino 工程 |
+| `firmware_bin/` | 历史固件/SPIFFS 镜像，本次未重建 |
+| `hardware/`、`mechanism/`、`resource/` | 保留的上游硬件、结构及图片资料 |
+| `workspace/pathTool/` | 上游运动路径工具 |
+| `docs/` | RDK 协议与公开整理核验 |
 
-<div align="center">
-  <img src="resource/quad-step.jpg" alt="四足三维模型" width="400"/>
-  <br/>
-  <em>四足三维模型预览</em>
-</div>
+历史文件名中的 `alphanoah1.0` 以及固件宏 `FIRMWARE_VERSION="2.1.0"` 予以保留，避免误称这次文档改名生成了新固件。原构建记录入口为 [ALPHANOAH_BUILD_NOTES.md](ALPHANOAH_BUILD_NOTES.md)。
 
-## 📱 复刻教程
+## DDC 2026 赛前基础
 
-<div align="center">
+本仓库记录已有的六足硬件、固件桥和 RDK 联动基础。后续应分开记录比赛期间新增代码、AI 辅助开发过程、真机结果与失败样本，不把旧功能计作现场新成果。最终要求见 [地瓜机器人黑客松官网](https://hackathon.d-robotics.cc/)。
 
-![公众号二维码](resource/qrcode_8cm.jpg)   
-*扫描二维码，关注**公众号**发送"**六足**"查看详细复刻**教程**、**交流群**！*
+[RDK 官方文档](https://developer.d-robotics.cc/rdk_doc_center/)和[rdk-docs MCP 说明](https://developer.d-robotics.cc/rdk-docs-mcp.md)可用于查阅资料；MCP不是运行本固件的依赖。
 
-</div>
+## 开源与贡献
 
-或点击下方**【NodeHexa教程】**直接查看公众号文章列表：
+项目软件按 **GNU GPL v3.0** 发布，见 [LICENSE](LICENSE)。新增 RDK 桥接与说明沿用该许可。第三方模块保留原作者、文件头和许可，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。上游硬件、结构和图片不宣称为 AlphaNoah 原创，也不扩大其原有开放范围。
 
-<details>
-<summary><strong>📚 NodeHexa教程</strong></summary>
-
-### 系列教程
-
-1. [六足机器人NodeHexa复刻教程（一）器材准备篇](https://mp.weixin.qq.com/s/QebT1wd3da98jmFbrUHNdA)
-2. [六足机器人NodeHexa复刻教程（二）腿部组装篇](https://mp.weixin.qq.com/s/x1spemwsdwfix2QXKvCDqA)
-3. [六足机器人NodeHexa复刻教程（三）机身组装篇](https://mp.weixin.qq.com/s/Z3uXM__K4puC-hbytVeSNw)
-4. [六足机器人NodeHexa复刻教程（四）编译烧录篇](https://mp.weixin.qq.com/s/InIxQt30JFU6OhD7m3k71Q)
-5. [六足机器人NodeHexa复刻教程（五）功能调试篇](https://mp.weixin.qq.com/s/-viItGeh79Q6JDqvxl3oZQ)
-
-### 功能演示
-
-- [【开源】必看！小智 AI 语音交互的六足机器人，带详细复刻教程，做不出来找我"算账"！（B站视频）](https://www.bilibili.com/video/BV19R4gzzEH7)
-- [【开源】必看！小智 AI 语音控制六足机器人，开启未来趋势的探索之旅！（微信文章）](https://mp.weixin.qq.com/s/sWiMd9wZ3VoEhoh8ss6X7w)
-
-</details>
-
-## 🚀 快速开始
-
-### 开发环境要求
-- 推荐：安装 PlatformIO 插件的 VSCode IDE
-
-### 连接和配置
-1. 机器人开机后连接WiFi热点 "NodeHexa" (密码: roboticscv666)
-2. 访问 `http://192.168.4.1` 进入控制界面
-3. 进行舵机校准 (访问 `/calibration` 页面)
-4. （可选）在设置中调整 WiFi AP、低电量保护和动作按钮模式
-5. （可选）打开运动规划页面 (访问 `/planner` 页面) 编排动作序列
-6. 开始控制机器人运动
-
-## 📱 Web控制界面
-
-### 主控制页面
-- **运动控制**: 前进、后退、转向、侧移等
-- **姿态控制**: 三轴旋转和扭转动作
-- **表演模式**: 自由律动、节拍摇摆、登场秀
-- **单腿演示（仅六足）**: 单独选择一条腿并实时控制平移/抬升
-- **电量徽章**: 实时显示电压、估算电量和低电量状态
-- **设置入口**: 支持修改 WiFi AP、低电量保护、动作按钮模式，并查看固件版本
-- **校准功能**: 一键进入校准模式
-- **运动规划**: 进入 `/planner` 编排并发送动作序列（单段动作也可直接执行）
-
-### 校准页面
-- **实时调整**: 每个舵机的角度微调
-- **可视化反馈**: 实时显示调整效果
-- **参数保存**: 自动保存校准数据
-
-### 运动规划页面（动作序列）
-- **电量显示**: 与主页面同步显示实时电压与电量百分比
-- **单段动作**: 执行一段限定周期/步数/距离的动作（姿态类动作仅支持周期）
-- **动作序列**: 多段动作串行执行（限制最多 5 段）
-- **队列控制**: 支持追加、清空队列与紧急停止
-
-
-## ❓ 常见问题 (QA)
-
-### 1. 六足舵机驱动板注意事项
-**重要提醒**：左右两侧舵机驱动板电路设计完全相同，但在焊接元件时有细小差别。
-
-- 舵机驱动板边缘的1×4P和1×6P排针只焊一侧，左右舵机驱动板焊接位置相反。
-- DIY用户需要焊接左侧舵机驱动板的SJ1跳帽（购买套件的用户无需操作，出厂已焊接）。
-
-**作用说明**：焊接跳帽后，左侧舵机驱动板的IIC地址将与右侧不同，避免两块驱动板地址冲突。两块舵机驱动板通过IIC协议与主控通信，地址相同会导致通信异常。
-
-## 🎯 作者
-
-- **B站**: [@智造师_RoboticsCV](https://space.bilibili.com/智造师_RoboticsCV)
-- **GitHub**: [@ViolinLee](https://github.com/ViolinLee)
-- **微信公众号**: RoboticsCV
-
-## 🤝 贡献指南
-
-欢迎提交Issue和Pull Request来改进项目！
-
-## 🙏 致谢
-
-- 基于 [hexapod-v2-7697](https://github.com/SmallpTsai/hexapod-v2-7697) 项目二次开发
-- 参考 [PiHexa18](https://github.com/ViolinLee/PiHexa18) 项目设计
-- 语音拓展来自 [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32)
-- 感谢所有开源社区的支持
-
----
-
-<div align="center">
-
-**⭐ 如果这个项目对你有帮助，请给它一个星标！**
-
-**📺 关注B站 [@智造师_RoboticsCV](https://space.bilibili.com/智造师_RoboticsCV) 获取更多机器人项目**
-
-**💬 关注公众号 `RoboticsCV` 获取技术文章和教程**
-
-Made with ❤️ by [ViolinLee](https://github.com/ViolinLee)
-
----
-
-Copyright © 2024 ViolinLee. Licensed under GPL-3.0.
-
-</div>
+欢迎补充 RDK 侧客户端、真实接线图、版本信息、控制链视频和逐命令结果。Issue/PR请附板型、脱敏日志与复现步骤，不提交私人 Wi-Fi 配置、账号凭证或未经授权图像。参见 [SECURITY.md](SECURITY.md)、[CHANGELOG.md](CHANGELOG.md)和[本次核验](docs/PUBLICATION_CHECKS.md)。

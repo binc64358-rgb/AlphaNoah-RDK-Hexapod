@@ -1,45 +1,14 @@
-# AlphaNoah 1.0 Firmware Notes
+# AlphaNoah RDK Hexapod firmware notes
 
-This repository is based on the NodeHexa 2.1.0 firmware package, with a small RDK X5 control bridge added in `firmware/src/main.cpp`.
+Previously named `alphanoah1.0`, this project is based on the NodeHexa 2.1.0 firmware package with an RDK X5 USB serial bridge in `firmware/src/main.cpp`.
 
-## Key changes
+- The maintainer-confirmed physical RDK/hexapod integration is now described in [README.md](README.md).
+- Actual build target: `firmware/platformio.ini`, environment `nodemcu-32s`.
+- `arduino_reference/alphanoah1_0_rdk_bridge_reference.ino` is a reading reference. Its legacy name is retained.
+- The inherited `FIRMWARE_VERSION="2.1.0"` macro is not a new DDC release.
+- `firmware_bin/` contains historical files; no rebuild or flashing was performed for this documentation publication.
+- RDK-side runtime code and command-level captures remain to be archived before claiming a complete reproducible RDK application.
 
-- Safe boot: servo PWM output is disabled by default.
-- USB `Serial` text protocol for RDK X5 control.
-- `Serial2` UART JSON frame protocol is preserved.
-- SPIFFS Web UI, calibration pages, WebSocket `/cmd`, AP configuration, battery monitor, LED tasks, and motion controllers are preserved.
+Build commands are in [README.md](README.md). Exact command semantics and limitations are in [docs/RDK_X5_INTEGRATION.md](docs/RDK_X5_INTEGRATION.md).
 
-## RDK X5 text commands
-
-Commands are newline terminated:
-
-```text
-PING
-ENABLE_SERVOS
-DISABLE_SERVOS
-CALIBRATE
-SERVO <id> <angle>
-STAND
-SIT
-WALK forward 50
-WALK backward 50
-TURN left
-TURN right
-STOP
-I2C_SCAN
-GET_ANGLES
-```
-
-## Build
-
-```text
-cd firmware
-python -m platformio run -e nodemcu-32s
-python -m platformio run -e nodemcu-32s -t buildfs
-```
-
-Compiled binaries are also copied under `firmware_bin/`.
-
-## Arduino reference
-
-`arduino_reference/alphanoah1_0_rdk_bridge_reference.ino` is a reference copy of the modified `main.cpp` for easier reading in Arduino IDE. The actual build target remains the PlatformIO project under `firmware/`.
+Original import: `d7757becf5b55e24cd24a96f333f27eb87660a17` (2026-05-12). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for attribution.

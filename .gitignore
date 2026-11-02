@@ -81,3 +81,15 @@ workspace/pathTool/src/visualization/
 # PlatformIO build cache
 firmware/.pio/
 
+
+# Private configuration and runtime material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+runtime/
+captures/
+private/

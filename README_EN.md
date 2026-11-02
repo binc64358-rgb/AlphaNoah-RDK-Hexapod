@@ -1,275 +1,59 @@
-# 🤖 NodeHexa - Hexapod Robot (with Quadruped Support)
+# AlphaNoah RDK Hexapod
 
-[中文说明](README.md)
+**A D-Robotics RDK X5 + ESP32 hexapod integration project.**
 
-<div align="center">
+[中文](README.md) · [RDK integration](docs/RDK_X5_INTEGRATION.md) · [Attribution](THIRD_PARTY_NOTICES.md)
 
-![NodeHexa Logo](resource/frontal.jpg)
+Based on the [ViolinLee/NodeHexa](https://github.com/ViolinLee/NodeHexa) 2.1.0 firmware package, this project adds an RDK X5 USB serial bridge. The RDK is the upper-level computing/control platform. The ESP32 executes motion commands and drives the hexapod through PCA9685 boards.
 
-**An ESP32-based hexapod robot project with additional quadruped firmware support, featuring Web control, calibration, performance motions, and motion sequence planning.**
+**Hardware status:** on 2026-11-02, the maintainer confirmed that the physical RDK X5 and hexapod already communicate and operate together. This is a maintainer-reported result, not an independent hardware test performed for this documentation release. Command-level evidence, photos and video remain to be archived.
 
-[![Platform](https://img.shields.io/badge/Platform-ESP32-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
-[![Framework](https://img.shields.io/badge/Framework-Arduino-green.svg)](https://www.arduino.cc/)
-[![License](https://img.shields.io/badge/License-GPL--3.0-red.svg)](LICENSE)
-[![Language](https://img.shields.io/badge/Language-C%2B%2B-orange.svg)](https://isocpp.org/)
+## Architecture and scope
 
-</div>
-
-## 📖 Overview
-
-NodeHexa is an open-source hexapod robot project built on the ESP32 microcontroller. It integrates kinematics algorithms, Web UI control, real-time calibration, and motion sequencing (motion planning), designed for robotics enthusiasts and research purposes.
-
-## 🧩 Supported Configurations
-
-This repository also provides **quadruped firmware support**, allowing both robot types to share one Web UI, calibration flow, and motion-control framework.
-
-| Configuration | Positioning | Scope | Docs / Media Status |
-| --- | --- | --- | --- |
-| **Hexapod (NodeHexa)** | Primary line | Structure / hardware / firmware / UI / tutorials | Most illustrations in this README are hexapod; full software and hardware design is open-source |
-| **Quadruped (NodeQuadMini)** | Additional support | Structure / schematic / firmware / UI | This README includes quadruped images; schematic is available (PCB files are not open-source); tutorials will be updated |
-
-> For structural parts and fastener differences, see `mechanism/README.md` (listed separately for hexapod and quadruped).
-
-## ✨ Key Features
-
-### 🧩 Dual-configuration support (hexapod primary, quadruped additional)
-- **Unified abstraction interface** - Hexapod and quadruped share the same control and Web framework
-- **Isolated implementation differences** - Hexapod and quadruped are implemented separately without blocking core feature evolution
-
-### 🎮 Multiple control methods
-- **Web UI control** - Real-time robot control from a browser
-- **Serial communication** - UART2 command control (for debugging and external host integration)
-- **WebSocket communication** - Low-latency real-time data transfer
-- **Optional voice extension** - Supports the XiaoZhi AI extension board for voice interaction control
-
-### 🚀 Rich motion modes
-- **Basic movement**: Forward, backward, turn left, turn right
-- **Lateral movement**: Move left, move right
-- **Posture control**: X/Y/Z-axis rotation and twisting actions
-- **Special actions**: Climbing and fast-forward mode
-- **Performance modes**: Freestyle, Beat Sway, and Showtime
-- **Motion button mode switching**: Supports both `continuous` and `single-cycle` triggering for basic motions and performance motions
-- **Single-leg demo mode (hexapod only)**: Select one leg and demonstrate forward/lateral/lift movement independently
-- **Quadruped multi-gait switching**: Trot / Walk / Gallop / Creep
-- **Motion sequence planning**: Chain multiple actions with constraints such as cycle/steps/distance/angle, then run in one click (see `/planner`)
-
-### 🔧 Precision calibration system
-- **Real-time calibration** - Visual servo-angle calibration from the Web UI
-- **Parameter persistence** - Calibration data is automatically saved to Flash storage
-
-### 🔋 Safety protection
-- **Battery badge** - Real-time voltage and estimated battery percentage on both the controller and planner pages
-- **Battery monitoring** - Real-time battery voltage monitoring
-- **Low-voltage protection** - Automatic LED warning and system protection
-
-## 🏗️ Technical Architecture
-
-### Hardware platform
-- **MCU**: ESP32 (NodeMCU-32S)
-- **Servo driver**: PCA9685 PWM driver board
-- **Communication**: WiFi + UART2 serial
-- **Storage**: SPIFFS file system
-- **Optional voice extension**: XiaoZhi AI extension board
-
-### Software structure
-```
-firmware/
-├── src/
-│   ├── main.cpp          # Main entry
-│   ├── robot.h           # Unified robot abstraction interface (shared by hexapod/quadruped)
-│   ├── hexapod.h/cpp     # Hexapod implementation
-│   ├── quad_robot.h/cpp  # Quadruped implementation
-│   ├── leg.h/cpp         # Single-leg control (separate/reused for both)
-│   ├── movement*.h/cpp   # Motion control algorithms and config tables
-│   ├── motion_controller*# Motion sequence / planner execution
-│   └── calibration.h/cpp # Calibration system
-├── include/              # Header files
-└── lib/                  # Third-party libraries
+```text
+RDK X5 upper-level application
+  -> USB serial / 115200 baud / newline-delimited commands
+  -> ESP32 processRdkCommand()
+  -> motion, calibration and output control
+  -> PCA9685 / hexapod servos
 ```
 
-## 🎯 Motion Control Algorithms
+The repository contains the ESP32 firmware and its RDK-facing protocol. The actual RDK-side application has not yet been archived here as a standalone client. The existing `Serial2` UART JSON interface is separate.
 
-### Kinematics
-- **Forward kinematics**: Calculate foot-end position from joint angles
-- **Inverse kinematics**: Calculate joint angles from target position
-- **Coordinate transforms**: Conversion between world and local coordinate systems
+The USB bridge and enable/disable, movement and diagnostic handlers exist in source. Physical integration is maintainer-confirmed. Web control, calibration and motion-planning code is inherited from upstream. No validated vision, autonomous inspection, navigation or AI-driven motion loop is claimed here.
 
-## 🖼️ Project Showcase
+Important limitations: `GET_ANGLES` returns a software cache, not measured joint feedback. `SIT` selects the same standby movement as `STAND`; it is not a distinct sitting pose. `STOP` clears software state and is not a physical power-cut emergency stop. See the [protocol](docs/RDK_X5_INTEGRATION.md).
 
-### Hexapod (NodeHexa) structure and hardware design
+## Build
 
-<table>
-  <tr>
-    <td align="center">
-      <img src="resource/45deg.jpg" alt="Structure design" width="300"/>
-      <br/>
-      <em>Hexapod Structure</em>
-    </td>
-    <td align="center">
-      <img src="resource/pcb-board.jpg" alt="PCB board" width="300"/>
-      <br/>
-      <em>PCB Kit</em>
-    </td>
-    <td align="center">
-      <img src="resource/xiaozhi.jpg" alt="XiaoZhi extension board" width="300"/>
-      <br/>
-      <em>XiaoZhi Extension</em>
-    </td>
-  </tr>
-</table>
+The firmware target is ESP32 / NodeMCU-32S, PlatformIO + Arduino. In an already configured environment, from the repository root:
 
-### Quadruped (NodeQuadMini) structure and hardware design
+```bash
+python -m platformio run -d firmware -e nodemcu-32s
+python -m platformio run -d firmware -e nodemcu-32s -t buildfs
+```
 
-<table>
-  <tr>
-    <td align="center">
-      <img src="resource/quad-45deg.png" alt="Quadruped structure" width="300"/>
-      <br/>
-      <em>Quadruped Structure</em>
-    </td>
-    <td align="center">
-      <img src="resource/quad-frontal.png" alt="Quadruped front view" width="300"/>
-      <br/>
-      <em>Quadruped Front View</em>
-    </td>
-    <td align="center">
-      <img src="resource/quad-pcb-board.png" alt="Quadruped mainboard" width="300"/>
-      <br/>
-      <em>Quadruped Mainboard</em>
-    </td>
-  </tr>
-</table>
+This documentation publication did not install dependencies, rebuild, flash or operate hardware. The configuration retains historical Windows port settings; select the actual device explicitly before any upload. Exact dependency versions are not fully locked. Historical files in `firmware_bin/` are not proof of a fresh reproducible build.
 
-> Note: The quadruped version currently open-sources the **schematic** for study and maintenance. PCB-related files are not open-source.
->
-> The quadruped supports multiple gait modes: Trot / Walk / Gallop / Creep.
+## Layout
 
-## 🛒 Purchase Links
-- **Kit purchase**: [NodeHexa Hexapod Kit](https://item.taobao.com/item.htm?ft=t&id=810056770425), [NodeQuadMini Quadruped Kit](https://item.taobao.com/item.htm?id=1022920495655)
-- **Controller board purchase**: [NodeHexa Hexapod Controller Board](https://item.taobao.com/item.htm?id=990145258187)
-- **Servo purchase (highly recommended)**: [MG90s Servo](https://item.taobao.com/item.htm?id=978672014892)
-- **Voice extension board**: [XiaoZhi AI Extension Board (supports hexapod & quadruped)](https://item.taobao.com/item.htm?id=989885356650)
+- `firmware/`: actual PlatformIO project.
+- `arduino_reference/`: reading reference, not a standalone complete Arduino sketch.
+- `firmware_bin/`: historical binaries and SPIFFS image.
+- `hardware/`, `mechanism/`, `resource/`: preserved upstream reference materials.
+- `workspace/pathTool/`: upstream motion-path tools, not the RDK runtime client.
+- `docs/`: integration protocol and publication checks.
 
-> We strongly recommend the servo listed in our store. There are many MG90s manufacturers on the market, with significant quality and size differences. Low-quality servos are more likely to overheat or burn out, which increases long-term cost. This link is the model selected after our own comparative testing.
+The primary integration target is the hexapod. Retained quadruped files do not establish RDK validation on a quadruped. Legacy artifact filenames and the inherited `2.1.0` firmware macro are unchanged.
 
-<div align="center">
-  <img src="resource/step.jpg" alt="Hexapod 3D model" width="400"/>
-  <br/>
-  <em>Hexapod 3D Model Preview</em>
-</div>
+## DDC 2026 baseline
 
-<div align="center">
-  <img src="resource/quad-step.jpg" alt="Quadruped 3D model" width="400"/>
-  <br/>
-  <em>Quadruped 3D Model Preview</em>
-</div>
+This repository records pre-event work. Future submissions must distinguish it from work completed during the hackathon, including actual hardware results and AI-assisted development records. See the [official event site](https://hackathon.d-robotics.cc/).
 
-## 📱 Build Tutorial
+The optional [rdk-docs MCP guide](https://developer.d-robotics.cc/rdk-docs-mcp.md) helps retrieve documentation. It is not a firmware runtime dependency.
 
-<div align="center">
+## License and contributions
 
-![WeChat Official Account QR](resource/qrcode_8cm.jpg)  
-*Scan the QR code, follow the official account, and send "**六足**" to access detailed build tutorials and the discussion group.*
+Project software is distributed under GNU GPL v3.0; see [LICENSE](LICENSE). RDK integration contributions follow the same license. Third-party components retain their own notices and terms. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); no ownership or expanded rights are claimed over upstream hardware, mechanical designs or images.
 
-</div>
-
-Or click **[NodeHexa Tutorials]** below to open the WeChat article list directly:
-
-<details>
-<summary><strong>📚 NodeHexa Tutorials</strong></summary>
-
-### Series Tutorials
-
-1. [NodeHexa Build Tutorial (1): Parts Preparation](https://mp.weixin.qq.com/s/QebT1wd3da98jmFbrUHNdA)
-2. [NodeHexa Build Tutorial (2): Leg Assembly](https://mp.weixin.qq.com/s/x1spemwsdwfix2QXKvCDqA)
-3. [NodeHexa Build Tutorial (3): Body Assembly](https://mp.weixin.qq.com/s/Z3uXM__K4puC-hbytVeSNw)
-4. [NodeHexa Build Tutorial (4): Compile & Flash](https://mp.weixin.qq.com/s/InIxQt30JFU6OhD7m3k71Q)
-5. [NodeHexa Build Tutorial (5): Functional Debugging](https://mp.weixin.qq.com/s/-viItGeh79Q6JDqvxl3oZQ)
-
-### Feature Demos
-
-- [Open Source Showcase: Hexapod with XiaoZhi AI Voice Interaction + Full Build Tutorial (Bilibili)](https://www.bilibili.com/video/BV19R4gzzEH7)
-- [Open Source Showcase: XiaoZhi AI Voice-Controlled Hexapod (WeChat Article)](https://mp.weixin.qq.com/s/sWiMd9wZ3VoEhoh8ss6X7w)
-
-</details>
-
-## 🚀 Quick Start
-
-### Development environment
-- Recommended: VSCode IDE with PlatformIO extension installed
-
-### Connection and setup
-1. Power on the robot and connect to WiFi hotspot `NodeHexa` (password: `roboticscv666`)
-2. Visit `http://192.168.4.1` to open the control panel
-3. Perform servo calibration (visit `/calibration`)
-4. (Optional) Adjust WiFi AP, low-battery protection, and motion button mode in Settings
-5. (Optional) Open motion planner (visit `/planner`) and arrange action sequences
-6. Start controlling the robot
-
-## 📱 Web Control Interface
-
-### Main control page
-- **Movement control**: Forward, backward, turning, lateral movement, etc.
-- **Posture control**: 3-axis rotation and twisting actions
-- **Performance modes**: Freestyle, Beat Sway, and Showtime
-- **Single-leg demo (hexapod only)**: Select one leg and control lateral/forward/lift movement in real time
-- **Battery badge**: Real-time voltage, estimated battery percentage, and low-battery status
-- **Settings entry**: Configure WiFi AP, low-battery protection, motion button mode, and view firmware version
-- **Calibration entry**: One-click calibration mode
-- **Motion planner**: Enter `/planner` to arrange and send motion sequences (single actions can also run directly)
-
-### Calibration page
-- **Real-time adjustment**: Fine-tune each servo angle
-- **Visual feedback**: See adjustment effects immediately
-- **Auto-save**: Calibration data is automatically stored
-
-### Motion planner page (action sequence)
-- **Battery display**: Shares the same live voltage and battery-percentage badge as the main page
-- **Single action**: Run one constrained action by cycle/steps/distance (posture actions support cycle only)
-- **Action sequence**: Run multiple actions in order (up to 5 segments)
-- **Queue control**: Supports appending, clearing the queue, and emergency stop
-
-## ❓ FAQ
-
-### 1. Notes on hexapod servo driver boards
-**Important**: The left and right servo driver boards use the same circuit design, but there is a small difference during component soldering.
-
-- Only one side should be soldered for the 1x4P and 1x6P pin headers on each servo driver board edge; left and right boards are opposite.
-- DIY users must solder the `SJ1` jumper on the left servo driver board (kit users can skip this because it is pre-soldered at factory).
-
-**Why this matters**: After soldering the jumper, the left board gets a different I2C address from the right board, avoiding address conflict. Both boards communicate with the controller over I2C; identical addresses will cause communication issues.
-
-## 🎯 Author
-
-- **Bilibili**: [@智造师_RoboticsCV](https://space.bilibili.com/智造师_RoboticsCV)
-- **GitHub**: [@ViolinLee](https://github.com/ViolinLee)
-- **WeChat Official Account**: RoboticsCV
-
-## 🤝 Contributing
-
-Issues and Pull Requests are welcome to improve this project.
-
-## 🙏 Acknowledgements
-
-- Secondary development based on [hexapod-v2-7697](https://github.com/SmallpTsai/hexapod-v2-7697)
-- Design references from [PiHexa18](https://github.com/ViolinLee/PiHexa18)
-- Voice extension based on [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32)
-- Thanks to all open-source contributors and communities
-
----
-
-<div align="center">
-
-**⭐ If this project helps you, please give it a star!**
-
-**📺 Follow Bilibili [@智造师_RoboticsCV](https://space.bilibili.com/智造师_RoboticsCV) for more robotics projects**
-
-**💬 Follow WeChat official account `RoboticsCV` for technical articles and tutorials**
-
-Made with ❤️ by [ViolinLee](https://github.com/ViolinLee)
-
----
-
-Copyright © 2024 ViolinLee. Licensed under GPL-3.0.
-
-</div>
+Contributions should include board/version details, reproducible steps and redacted logs. RDK client code, wiring records, calibration evidence and physical demonstration video are welcome. See [SECURITY.md](SECURITY.md) and [CHANGELOG.md](CHANGELOG.md).
